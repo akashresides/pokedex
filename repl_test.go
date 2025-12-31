@@ -7,16 +7,30 @@ func TestCleanInput(t *testing.T) {
                 input    string
                 expected []string
         }{
-                {
-                        input:    "  hello  world  ",
-                        expected: []string{"hello", "world"},
-                },
-                // add more cases here
-                {
-                        input:    "  I am Zidane  ",
-                        expected: []string{"i", "am", "zidane"},
-                },
-        }
+                		{
+                			input:    "  hello  world  ",
+                			expected: []string{"hello", "world"},
+                		},
+                		{
+                			input:    "  I am Zidane  ",
+                			expected: []string{"i", "am", "zidane"},
+                		},
+                		{
+                			input:    "",
+                			expected: []string{},
+                		},
+                		{
+                			input:    "   ",
+                			expected: []string{},
+                		},
+                		{
+                			input:    "HELLO WORLD",
+                			expected: []string{"hello", "world"},
+                		},
+                		{
+                			input:    "hello\tworld\n",
+                			expected: []string{"hello", "world"},
+                		},        }
         for _, c := range cases {
                 actual := cleanInput(c.input)
                 // Check the length of the actual slice against the expected slice
