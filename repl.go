@@ -1,11 +1,16 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/akashresides/pokedex/internal/pokeapi"
+	"github.com/akashresides/pokedex/internal/pokecache"
 )
 
 func cleanInput(text string) []string {
@@ -15,6 +20,7 @@ func cleanInput(text string) []string {
 type config struct {
 	Next     *string
 	Previous *string
+	Cache    *pokecache.Cache
 }
 
 type cliCommand struct {
@@ -64,8 +70,12 @@ func commandExit(cfg *config) error {
 }
 
 func commandMap(cfg *config) error {
-	client := pokeapi.NewClient()
-	locationAreas, err := client.GetLocationAreas(cfg.Next)
+	url := "https://pokeapi.co/api/v2/location-area/"
+	if cfg.Next != nil {
+		url = *cfg.Next
+	}
+
+	locationAreas, err := fetchLocationArea(url, cfg.Cache)
 	if err != nil {
 		return err
 	}
@@ -80,14 +90,56 @@ func commandMap(cfg *config) error {
 	return nil
 }
 
+func fetchLocationArea(url string, cache *pokecache.Cache) (pokeapi.LocationAreasResponse, error) {
+	data, found := cache.Get(url)
+	if found {
+		var locationAreas pokeapi.LocationAreasResponse
+		err := json.Unmarshal(data, &locationAreas)
+		if err != nil {
+			return pokeapi.LocationAreasResponse{}, err
+		}
+		return locationAreas, nil
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return pokeapi.LocationAreasResponse{}, err
+	}
+
+	res, err := client.Do(req)
+	if err != nil {
+		return pokeapi.LocationAreasResponse{}, err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode > 399 {
+		return pokeapi.LocationAreasResponse{}, fmt.Errorf("bad status code: %v", res.StatusCode)
+	}
+
+	data, err = io.ReadAll(res.Body)
+	if err != nil {
+		return pokeapi.LocationAreasResponse{}, err
+	}
+
+	cache.Add(url, data)
+
+	var locationAreas pokeapi.LocationAreasResponse
+	err = json.Unmarshal(data, &locationAreas)
+	if err != nil {
+		return pokeapi.LocationAreasResponse{}, err
+	}
+
+	return locationAreas, nil
+}
+
 func commandMapBack(cfg *config) error {
 	if cfg.Previous == nil {
 		fmt.Println("you're on the first page")
 		return nil
 	}
 
-	client := pokeapi.NewClient()
-	locationAreas, err := client.GetLocationAreas(cfg.Previous)
+	locationAreas, err := fetchLocationArea(*cfg.Previous, cfg.Cache)
 	if err != nil {
 		return err
 	}
