@@ -8,6 +8,7 @@ A command-line Pokedex CLI application built in Go that explores Pokemon world l
 - Fully functional CLI with interactive REPL
 - PokeAPI integration for location areas
 - Pagination support for exploring location areas
+- Pokemon exploration in location areas with caching
 
 ## Project Structure
 ```
@@ -40,6 +41,7 @@ pokedex/
 - **exit**: Exits the Pokedex gracefully
 - **map**: Displays next 20 location areas from PokeAPI
 - **mapb**: Displays previous 20 location areas (with "you're on the first page" message)
+- **explore <location_area>**: Displays all Pokemon found in a location area
 
 ### 3. PokeAPI Integration (internal/pokeapi/)
 - HTTP client with 1-minute timeout
@@ -84,6 +86,24 @@ type LocationAreasResponse struct {
 }
 ```
 
+### PokemonEncounter struct
+```go
+type PokemonEncounter struct {
+    Pokemon struct {
+        Name string
+        URL  string
+    }
+}
+```
+
+### LocationAreaDetail struct
+```go
+type LocationAreaDetail struct {
+    Name              string
+    PokemonEncounters []PokemonEncounter
+}
+```
+
 ### CacheEntry struct
 ```go
 type CacheEntry struct {
@@ -122,8 +142,8 @@ Run tests with: `go test -v` or `go test ./...`
 
 ## Git History
 ```
-LATEST: feat: implement in-memory caching system for API responses
-0b20d19 feat: add map and mapb commands with PokeAPI integration
+LATEST: feat: add explore command to show Pokemon in location areas
+0b20d19 feat: implement in-memory caching system for API responses
 571e3b6 test: add command registry validation tests
 7bdc340 test: improve CleanInput test coverage with edge cases
 6698775 chore: stop tracking and ignore pokedex binary
@@ -150,12 +170,27 @@ help: Displays a help message
 exit: Exit the Pokedex
 map: Displays the next 20 location areas in the Pokemon world
 mapb: Displays the previous 20 location areas in the Pokemon world
+explore <location_area>: Displays a list of all Pokemon in a location area
 
 Pokedex > map
 canalave-city-area
 eterna-city-area
 pastoria-city-area
 ... (17 more)
+
+Pokedex > explore pastoria-city-area
+Exploring pastoria-city-area...
+Found Pokemon:
+ - tentacool
+ - tentacruel
+ - magikarp
+ - gyarados
+ - remoraid
+ - octillery
+ - wingull
+ - pelipper
+ - shellos
+ - gastrodon
 
 Pokedex > map
 mt-coronet-1f-route-216
@@ -180,12 +215,12 @@ go 1.22.2
 
 ## API Reference
 - PokeAPI Base URL: https://pokeapi.co/api/v2
-- Location Area Endpoint: /location-area/
-- Response includes pagination via "next" and "previous" fields
+- Location Area Endpoint: /location-area/ (list)
+- Location Area Detail Endpoint: /location-area/{name}/ (with Pokemon encounters)
+- List response includes pagination via "next" and "previous" fields
 
 ## Next Steps (Potential Future Features)
 - Catch Pokemon command
 - Inspect Pokemon command
-- Explore Pokemon details
 - Battle mechanics
 - Save/Load functionality

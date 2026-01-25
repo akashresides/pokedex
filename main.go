@@ -33,7 +33,7 @@ func main() {
 		}
 
 		// Run the command
-		err := cmd.callback(cfg)
+		err := cmd.callback(cfg, text[1:])
 		if err != nil {
 			fmt.Println("Error:", err)
 		}
