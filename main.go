@@ -6,12 +6,14 @@ import (
 	"os"
 	"time"
 
+	"github.com/akashresides/pokedex/internal/pokeapi"
 	"github.com/akashresides/pokedex/internal/pokecache"
 )
 
 func main() {
 	cfg := &config{
-		Cache: pokecache.NewCache(5 * time.Minute),
+		Cache:   pokecache.NewCache(5 * time.Minute),
+		Pokedex: make(map[string]pokeapi.Pokemon),
 	}
 	scanner := bufio.NewScanner(os.Stdin)
 

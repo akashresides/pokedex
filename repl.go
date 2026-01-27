@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -21,6 +22,7 @@ type config struct {
 	Next     *string
 	Previous *string
 	Cache    *pokecache.Cache
+	Pokedex  map[string]pokeapi.Pokemon
 }
 
 type cliCommand struct {
@@ -55,6 +57,11 @@ var commands = map[string]cliCommand{
 		description: "Displays a list of all Pokemon in a location area",
 		callback:    commandExplore,
 	},
+	"catch": {
+		name:        "catch",
+		description: "Attempt to catch a Pokemon",
+		callback:    commandCatch,
+	},
 }
 
 func commandHelp(cfg *config, args []string) error {
@@ -66,6 +73,7 @@ func commandHelp(cfg *config, args []string) error {
 	fmt.Println("map: Displays the next 20 location areas in the Pokemon world")
 	fmt.Println("mapb: Displays the previous 20 location areas in the Pokemon world")
 	fmt.Println("explore <location_area>: Displays a list of all Pokemon in a location area")
+	fmt.Println("catch <pokemon>: Attempt to catch a Pokemon")
 	return nil
 }
 
@@ -182,6 +190,38 @@ func commandExplore(cfg *config, args []string) error {
 	return nil
 }
 
+func commandCatch(cfg *config, args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("please provide a Pokemon name")
+	}
+
+	pokemonName := args[0]
+	url := fmt.Sprintf("https://pokeapi.co/api/v2/pokemon/%s/", pokemonName)
+
+	fmt.Printf("Throwing a Pokeball at %s...\n", pokemonName)
+
+	pokemon, err := fetchPokemon(url, cfg.Cache)
+	if err != nil {
+		return err
+	}
+
+	baseExperience := pokemon.BaseExperience
+	catchChance := float64(baseExperience) / 100.0
+	if catchChance > 0.9 {
+		catchChance = 0.9
+	}
+	catchChance = 1.0 - catchChance
+
+	if rand.Float64() < catchChance {
+		cfg.Pokedex[pokemon.Name] = pokemon
+		fmt.Printf("%s was caught!\n", pokemon.Name)
+	} else {
+		fmt.Printf("%s escaped!\n", pokemon.Name)
+	}
+
+	return nil
+}
+
 func fetchLocationAreaDetail(url string, cache *pokecache.Cache) (pokeapi.LocationAreaDetail, error) {
 	data, found := cache.Get(url)
 	if found {
@@ -223,4 +263,47 @@ func fetchLocationAreaDetail(url string, cache *pokecache.Cache) (pokeapi.Locati
 	}
 
 	return locationAreaDetail, nil
+}
+
+func fetchPokemon(url string, cache *pokecache.Cache) (pokeapi.Pokemon, error) {
+	data, found := cache.Get(url)
+	if found {
+		var pokemon pokeapi.Pokemon
+		err := json.Unmarshal(data, &pokemon)
+		if err != nil {
+			return pokeapi.Pokemon{}, err
+		}
+		return pokemon, nil
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return pokeapi.Pokemon{}, err
+	}
+
+	res, err := client.Do(req)
+	if err != nil {
+		return pokeapi.Pokemon{}, err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode > 399 {
+		return pokeapi.Pokemon{}, fmt.Errorf("bad status code: %v", res.StatusCode)
+	}
+
+	data, err = io.ReadAll(res.Body)
+	if err != nil {
+		return pokeapi.Pokemon{}, err
+	}
+
+	cache.Add(url, data)
+
+	var pokemon pokeapi.Pokemon
+	err = json.Unmarshal(data, &pokemon)
+	if err != nil {
+		return pokeapi.Pokemon{}, err
+	}
+
+	return pokemon, nil
 }

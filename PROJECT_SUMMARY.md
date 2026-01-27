@@ -42,6 +42,7 @@ pokedex/
 - **map**: Displays next 20 location areas from PokeAPI
 - **mapb**: Displays previous 20 location areas (with "you're on the first page" message)
 - **explore <location_area>**: Displays all Pokemon found in a location area
+- **catch <pokemon>**: Attempts to catch a Pokemon using base experience to determine catch chance
 
 ### 3. PokeAPI Integration (internal/pokeapi/)
 - HTTP client with 1-minute timeout
@@ -54,8 +55,17 @@ pokedex/
 - Expiration-based entry removal via reapLoop goroutine
 - Cache entries stored with timestamp for expiration tracking
 - Helper function fetchLocationArea() checks cache before HTTP requests
-- Reduces API calls for repeated location area queries
+- Helper function fetchPokemon() checks cache before HTTP requests
+- Reduces API calls for repeated location area and Pokemon queries
 - Configurable expiration interval (currently 5 minutes)
+
+### 5. Catch Command (repl.go)
+- Fetches Pokemon data from PokeAPI using Pokemon endpoint
+- Uses base experience to calculate catch probability (higher XP = harder to catch)
+- Catch chance formula: 1.0 - min(base_experience / 100.0, 0.9)
+- Random determination using math/rand.Float64()
+- Successfully caught Pokemon stored in Pokedex map
+- Prints "Throwing a Pokeball at <name>..." before attempting catch
 
 ## Key Data Structures
 
@@ -65,6 +75,7 @@ type config struct {
     Next     *string              // URL for next page of results
     Previous *string              // URL for previous page of results
     Cache    *pokecache.Cache      // In-memory cache for API responses
+    Pokedex  map[string]Pokemon   // User's caught Pokemon collection
 }
 ```
 
@@ -121,6 +132,16 @@ type Cache struct {
 }
 ```
 
+### Pokemon struct
+```go
+type Pokemon struct {
+    Name           string
+    BaseExperience int
+    Height         int
+    Weight         int
+}
+```
+
 ## Testing
 
 ### REPL Tests (repl_test.go)
@@ -142,8 +163,9 @@ Run tests with: `go test -v` or `go test ./...`
 
 ## Git History
 ```
-LATEST: feat: add explore command to show Pokemon in location areas
-0b20d19 feat: implement in-memory caching system for API responses
+LATEST: feat: add catch command to catch Pokemon with base experience-based probability
+0b20d19 feat: add explore command to show Pokemon in location areas
+0b20d18 feat: implement in-memory caching system for API responses
 571e3b6 test: add command registry validation tests
 7bdc340 test: improve CleanInput test coverage with edge cases
 6698775 chore: stop tracking and ignore pokedex binary
@@ -171,6 +193,7 @@ exit: Exit the Pokedex
 map: Displays the next 20 location areas in the Pokemon world
 mapb: Displays the previous 20 location areas in the Pokemon world
 explore <location_area>: Displays a list of all Pokemon in a location area
+catch <pokemon>: Attempt to catch a Pokemon
 
 Pokedex > map
 canalave-city-area
@@ -203,6 +226,14 @@ eterna-city-area
 pastoria-city-area
 ... (17 more)
 
+Pokedex > catch pikachu
+Throwing a Pokeball at pikachu...
+pikachu escaped!
+
+Pokedex > catch pikachu
+Throwing a Pokeball at pikachu...
+pikachu was caught!
+
 Pokedex > exit
 Closing the Pokedex... Goodbye!
 ```
@@ -217,10 +248,10 @@ go 1.22.2
 - PokeAPI Base URL: https://pokeapi.co/api/v2
 - Location Area Endpoint: /location-area/ (list)
 - Location Area Detail Endpoint: /location-area/{name}/ (with Pokemon encounters)
+- Pokemon Endpoint: /pokemon/{name}/ (Pokemon details including base_experience)
 - List response includes pagination via "next" and "previous" fields
 
 ## Next Steps (Potential Future Features)
-- Catch Pokemon command
 - Inspect Pokemon command
 - Battle mechanics
 - Save/Load functionality
