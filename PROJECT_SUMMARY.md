@@ -4,11 +4,14 @@
 A command-line Pokedex CLI application built in Go that explores Pokemon world location areas using the PokeAPI.
 
 ## Current State
-- All tests passing
-- Fully functional CLI with interactive REPL
-- PokeAPI integration for location areas
-- Pagination support for exploring location areas
-- Pokemon exploration in location areas with caching
+ - All tests passing
+ - Fully functional CLI with interactive REPL
+ - PokeAPI integration for location areas
+ - Pagination support for exploring location areas
+ - Pokemon exploration in location areas with caching
+ - Pokemon catching mechanics with base experience-based probability
+ - Pokemon inspection to view caught Pokemon details
+ - Pokedex listing to view all caught Pokemon
 
 ## Project Structure
 ```
@@ -41,8 +44,10 @@ pokedex/
 - **exit**: Exits the Pokedex gracefully
 - **map**: Displays next 20 location areas from PokeAPI
 - **mapb**: Displays previous 20 location areas (with "you're on the first page" message)
-- **explore <location_area>**: Displays all Pokemon found in a location area
-- **catch <pokemon>**: Attempts to catch a Pokemon using base experience to determine catch chance
+ - **explore <location_area>**: Displays all Pokemon found in a location area
+ - **catch <pokemon>**: Attempts to catch a Pokemon using base experience to determine catch chance
+ - **inspect <pokemon>**: View details about a caught Pokemon (name, height, weight, stats, types)
+ - **pokedex**: List all caught Pokemon
 
 ### 3. PokeAPI Integration (internal/pokeapi/)
 - HTTP client with 1-minute timeout
@@ -139,6 +144,21 @@ type Pokemon struct {
     BaseExperience int
     Height         int
     Weight         int
+    Stats          []Stat
+    Types          []PokemonType
+}
+
+type Stat struct {
+    BaseStat int
+    Stat     struct {
+        Name string
+    }
+}
+
+type PokemonType struct {
+    Type struct {
+        Name string
+    }
 }
 ```
 
@@ -188,12 +208,14 @@ Pokedex > help
 Welcome to the Pokedex!
 Usage:
 
-help: Displays a help message
-exit: Exit the Pokedex
-map: Displays the next 20 location areas in the Pokemon world
-mapb: Displays the previous 20 location areas in the Pokemon world
-explore <location_area>: Displays a list of all Pokemon in a location area
-catch <pokemon>: Attempt to catch a Pokemon
+  help: Displays a help message
+  exit: Exit the Pokedex
+  map: Displays the next 20 location areas in the Pokemon world
+  mapb: Displays the previous 20 location areas in the Pokemon world
+  explore <location_area>: Displays a list of all Pokemon in a location area
+  catch <pokemon>: Attempt to catch a Pokemon
+  inspect <pokemon>: View details about a caught Pokemon
+  pokedex: List all caught Pokemon
 
 Pokedex > map
 canalave-city-area
@@ -230,13 +252,45 @@ Pokedex > catch pikachu
 Throwing a Pokeball at pikachu...
 pikachu escaped!
 
-Pokedex > catch pikachu
-Throwing a Pokeball at pikachu...
-pikachu was caught!
+ Pokedex > catch pikachu
+ Throwing a Pokeball at pikachu...
+ pikachu was caught!
 
-Pokedex > exit
-Closing the Pokedex... Goodbye!
-```
+ Pokedex > inspect pikachu
+ Name: pikachu
+ Height: 4
+ Weight: 60
+ Stats:
+  -hp: 35
+  -attack: 55
+  -defense: 40
+  -special-attack: 50
+  -special-defense: 50
+  -speed: 90
+ Types:
+  - electric
+
+  Pokedex > inspect pidgey
+  you have not caught that pokemon
+
+  Pokedex > catch pidgey
+  Throwing a Pokeball at pidgey...
+  pidgey was caught!
+  You may now inspect it with the inspect command.
+
+  Pokedex > catch caterpie
+  Throwing a Pokeball at caterpie...
+  caterpie was caught!
+  You may now inspect it with the inspect command.
+
+  Pokedex > pokedex
+  Your Pokedex:
+   - pidgey
+   - caterpie
+
+  Pokedex > exit
+  Closing the Pokedex... Goodbye!
+  ```
 
 ## Go Module
 ```
@@ -251,7 +305,7 @@ go 1.22.2
 - Pokemon Endpoint: /pokemon/{name}/ (Pokemon details including base_experience)
 - List response includes pagination via "next" and "previous" fields
 
-## Next Steps (Potential Future Features)
-- Inspect Pokemon command
-- Battle mechanics
-- Save/Load functionality
+ ## Next Steps (Potential Future Features)
+ - Battle mechanics
+ - Save/Load functionality
+ 
